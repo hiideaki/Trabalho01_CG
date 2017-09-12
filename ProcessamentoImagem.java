@@ -4,23 +4,50 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class ProcessamentoImagem extends JFrame implements ActionListener {
 	BufferedImage imgInput, Img1, Img2;
+	int chosenFilter, pix, dg, dt;
 	JLabel lblImg1, lblImg2;
 	JComboBox filtersList;
-	JButton btnConfirmar = new JButton("Confirmar");
 	JPanel pnlImg = new JPanel();
-	JPanel pnlLista = new JPanel();	
+	JPanel pnlBtn = new JPanel();
+	JPanel pnlFiltros = new JPanel();
+	JLabel lblInfo = new JLabel("<html><p style='font-size: 8px'>As imagens foram redimensionadas para 500x500<br>para preencher melhor a janela</p></html>");
 	JButton btnFoto = new JButton("Escolher foto");
+	JButton btnSalvar = new JButton("Salvar foto");
 	JFileChooser chooser = new JFileChooser();
-	FileNameExtensionFilter filt = new FileNameExtensionFilter("JPG & PNG", "jpg", "png");
+	JFileChooser saver = new JFileChooser();
+	FileNameExtensionFilter filt1 = new FileNameExtensionFilter("JPG & PNG", "jpg", "png");
+	FileNameExtensionFilter filt2 = new FileNameExtensionFilter("PNG", "png");
+	
+	JPanel pnlWave = new JPanel();
+	JLabel lblDeg = new JLabel("Frequência");
+	JSpinner spnDeg = new JSpinner(new SpinnerNumberModel(10, 1, 20, 1));
+	JLabel lblDis = new JLabel("Amplitude");
+	JSpinner spnDis = new JSpinner(new SpinnerNumberModel(10, 1, 20, 1));
+	
+	JPanel pnlPixel = new JPanel();
+	JLabel lblPix = new JLabel("Tamanho do pixel");
+	JSpinner spnPix = new JSpinner(new SpinnerNumberModel(10, 2, 30, 1));
 	
 	ProcessamentoImagem() {
 		super("Processamento de Imagens");
 		
-		chooser.setFileFilter(filt);
+		pix = 10;
+		dt = 10;
+		dg = 10;
+		
+		chooser.setFileFilter(filt1);
+		saver.setFileFilter(filt2);
+		
+		pnlBtn.setLayout(new GridLayout(2, 1, 10, 10));
+		pnlFiltros.setLayout(new GridLayout(2, 1, 10, 10));
+		pnlWave.setLayout(new GridLayout(2, 2, 10, 10));
+		pnlPixel.setLayout(new GridLayout(1, 2, 10, 10));
 		
 		String[] filters = {"Grayscale", "Negativo", "Sepia", "Pixelate", "Circle Pixels", "Wave", "Focus", "Sobel Negativo"};
 		filtersList = new JComboBox<String>(filters);
@@ -38,27 +65,84 @@ public class ProcessamentoImagem extends JFrame implements ActionListener {
 		lblImg1 = new JLabel(new ImageIcon(Img1));
 		lblImg2 = new JLabel(new ImageIcon(Img2));
 		
+		pnlImg.setSize(new Dimension(1000, 500));
 		pnlImg.add(lblImg1, BorderLayout.WEST);
 		pnlImg.add(lblImg2, BorderLayout.EAST);
-		pnlLista.setLayout(new GridLayout(2, 0, 10, 10));
-		pnlLista.add(filtersList);
-		pnlLista.add(btnConfirmar);
-		pnlLista.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 		
+		pnlWave.add(lblDeg);
+		pnlWave.add(spnDeg);
+		pnlWave.add(lblDis);
+		pnlWave.add(spnDis);
+		
+		pnlPixel.setOpaque(true);
+		pnlPixel.add(lblPix);
+		pnlPixel.add(spnPix);
+
+		pnlFiltros.setOpaque(true);
+		pnlFiltros.add(filtersList);
+		pnlFiltros.add(lblInfo);
+		
+		pnlBtn.add(btnFoto);
+		pnlBtn.add(btnSalvar);
+		
+		pnlFiltros.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+		pnlBtn.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+		pnlWave.setBorder(BorderFactory.createTitledBorder("Wave"));
+		pnlPixel.setBorder(BorderFactory.createTitledBorder("Pixel"));
+
 		add(pnlImg, BorderLayout.NORTH);
-		add(pnlLista, BorderLayout.WEST);
-		add(btnFoto, BorderLayout.EAST);
-	
-		btnConfirmar.addActionListener(this);
+		add(pnlFiltros, BorderLayout.WEST);
+		add(pnlBtn, BorderLayout.EAST);
+
 		btnFoto.addActionListener(this);
+		btnSalvar.addActionListener(this);
+		filtersList.addActionListener(this);
+		spnDeg.addChangeListener(new ChangeListener() {
+	        public void stateChanged(ChangeEvent e) {
+	        	dg = (int)spnDeg.getValue();
+	        	Img2 = wave(Img1);
+				lblImg2.setIcon(new ImageIcon(Img2));
+	        }
+	    });
+		spnDis.addChangeListener(new ChangeListener() {
+	        public void stateChanged(ChangeEvent e) {
+				dt = (int)spnDis.getValue();
+	        	Img2 = wave(Img1);
+				lblImg2.setIcon(new ImageIcon(Img2));
+	        }
+	    });
+		spnPix.addChangeListener(new ChangeListener() {
+	        public void stateChanged(ChangeEvent e) {
+				pix = (int)spnPix.getValue();
+				if(chosenFilter == 3) {
+					Img2 = pixelate(Img1);
+				} else if(chosenFilter == 4) {
+					Img2 = circlepixels(Img1);
+				}
+				lblImg2.setIcon(new ImageIcon(Img2));
+	        }
+	    });
+		 
 		
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		pack();
+
 		setVisible(true);
+		
 	}
 	
 	public void applyFilter() {
-		int chosenFilter = filtersList.getSelectedIndex();
+		pix = 10;
+		dg = 10;
+		dt = 10;
+		spnDeg.setValue(10);
+		spnDis.setValue(10);
+		spnPix.setValue(10);
+		remove(pnlPixel);
+		remove(pnlWave);
+		repaint();
+		
+		chosenFilter = filtersList.getSelectedIndex();
 		switch(chosenFilter) {
 			case 0:
 				Img2 = grayscale(Img1);
@@ -71,12 +155,18 @@ public class ProcessamentoImagem extends JFrame implements ActionListener {
 				break;
 			case 3:
 				Img2 = pixelate(Img1);
+				add(pnlPixel, BorderLayout.CENTER);
+				revalidate();
 				break;
 			case 4:
 				Img2 = circlepixels(Img1);
+				add(pnlPixel, BorderLayout.CENTER);
+				revalidate();
 				break;
 			case 5:
 				Img2 = wave(Img1);
+				add(pnlWave, BorderLayout.CENTER);
+				revalidate();
 				break;
 			case 6:
 				Img2 = focus(Img1);
@@ -88,10 +178,10 @@ public class ProcessamentoImagem extends JFrame implements ActionListener {
 	}
 
 	public void actionPerformed(ActionEvent e) {
-		if(e.getSource() == btnConfirmar) {
+		if(e.getSource() == filtersList) {
 			applyFilter();
 			lblImg2.setIcon(new ImageIcon(Img2));
-		} else {
+		} else if(e.getSource() == btnFoto) {
 			int returnVal = chooser.showOpenDialog(this);
 		    if(returnVal == JFileChooser.APPROVE_OPTION) {
 		       try {
@@ -107,8 +197,19 @@ public class ProcessamentoImagem extends JFrame implements ActionListener {
 			    } catch(Exception ex) {
 			    	ex.printStackTrace();
 			    }
-		    }
-						
+		    }	
+		} else if(e.getSource() == btnSalvar) {
+			int returnVal = saver.showSaveDialog(null);
+			if(returnVal == JFileChooser.APPROVE_OPTION) {
+				try {
+					File f = saver.getSelectedFile();
+					String path = f.getAbsolutePath();
+					f = new File(f.toString() + ".png");
+					ImageIO.write(Img2, "png", f);
+				} catch(Exception ex) {
+					ex.printStackTrace();
+				}
+			}
 		}
 	}
 	
@@ -181,7 +282,6 @@ public class ProcessamentoImagem extends JFrame implements ActionListener {
 	
 	BufferedImage pixelate(BufferedImage img) {
 		int col, row, rgb, red, green, blue, somar, somag, somab;
-		int pix = 10; //tamanho dos blocos
 		col = img.getWidth() / pix;
 		row = img.getHeight() / pix;
 		BufferedImage ret = new BufferedImage(col * pix, row * pix, BufferedImage.TYPE_INT_RGB);
@@ -214,7 +314,6 @@ public class ProcessamentoImagem extends JFrame implements ActionListener {
 	
 	BufferedImage circlepixels(BufferedImage img) {
 		int col, row, rgb, red, green, blue, somar, somag, somab;
-		int pix = 10; //tamanho dos blocos
 		int d1, d2, d;
 		col = img.getWidth() / pix;
 		row = img.getHeight() / pix;
@@ -274,8 +373,6 @@ public class ProcessamentoImagem extends JFrame implements ActionListener {
 		ctrl = 1;
 		double offset = 0;
 		double aux;
-		int dg = 10; //quantos graus "anda" por "i"
-		int dt = 10; //distorção
 		for(int i = 0; i < row; i++) {
 			aux = Math.sin(dg * i * Math.PI / 180);
 			if(aux >= 0) {
